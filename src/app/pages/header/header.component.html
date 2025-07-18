@@ -1,0 +1,21 @@
+   <header class="header">
+      <div class="logo">
+        <span class="logo-icon">🎬</span>
+        <span class="logo-text">FilmTube</span>
+      </div>
+
+      <div class="search-container">
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Cari film..."
+          [formControl]="searchControl">
+        <button class="search-button" (click)="onSearch()">
+          🔍
+        </button>
+      </div>
+
+      <div class="user-menu">
+        👤
+      </div>
+    </header>

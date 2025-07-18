@@ -1,0 +1,15 @@
+ .app {
+      min-height: 100vh;
+      background-color: #0f0f0f;
+      color: #ffffff;
+    }
+
+    .main-content {
+      margin-top: 80px;
+    }
+
+    @media (max-width: 480px) {
+      .main-content {
+        margin-top: 120px;
+      }
+    }

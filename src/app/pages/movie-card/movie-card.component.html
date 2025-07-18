@@ -1,0 +1,24 @@
+<div class="movie-card" (click)="onMovieClick()">
+      <div class="poster-container">
+        <img
+          [src]="movieService.getImageUrl(movie.poster_path)"
+          [alt]="movie.title"
+          class="movie-poster"
+          (error)="onImageError($event)">
+        <div class="poster-overlay" *ngIf="!posterLoaded">
+          🎬 {{ movie.title }}
+        </div>
+      </div>
+
+      <div class="movie-info">
+        <h3 class="movie-title">{{ movie.title }}</h3>
+        <div class="movie-meta">
+          <span class="release-year">{{ movieService.getReleaseYear(movie.release_date) }}</span>
+          <div class="rating">
+            <span class="star">⭐</span>
+            <span class="rating-value">{{ movie.vote_average | number:'1.1-1' }}</span>
+          </div>
+        </div>
+        <p class="movie-overview">{{ movie.overview }}</p>
+      </div>
+    </div>

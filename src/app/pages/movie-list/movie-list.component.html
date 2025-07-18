@@ -1,0 +1,60 @@
+<div class="movie-list-container">
+  <!-- API Status Indicator -->
+  <div class="api-status" *ngIf="showApiStatus">
+    <div class="status-indicator" [class]="apiStatus.class">
+      {{ apiStatus.message }}
+    </div>
+  </div>
+
+  <!-- Categories -->
+  <div class="categories">
+    <button *ngFor="let category of categories" class="category-btn" [class.active]="activeCategory === category.id"
+      (click)="loadMovies(category.id, category.name)">
+      {{ category.name }}
+    </button>
+    <button class="category-btn" [class.active]="activeCategory === 'trending'" (click)="loadTrending()">
+      🔥 Trending
+    </button>
+  </div>
+
+  <!-- Section Title -->
+  <h2 class="section-title">{{ sectionTitle }}</h2>
+
+  <!-- Loading -->
+  <div class="loading" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <p>{{ loadingMessage }}</p>
+  </div>
+
+  <!-- Error -->
+  <div class="error" *ngIf="errorMessage && !isLoading">
+    <div class="error-icon">⚠️</div>
+    <h3>Ups! Terjadi Kesalahan</h3>
+    <p>{{ errorMessage }}</p>
+    <div class="error-actions">
+      <button class="retry-btn" (click)="retryLoad()">🔄 Coba Lagi</button>
+      <button class="fallback-btn" (click)="loadFallbackData()">📱 Mode Offline</button>
+    </div>
+  </div>
+
+  <!-- Movie Grid -->
+  <div class="movie-grid" *ngIf="!isLoading && !errorMessage">
+    <app-movie-card *ngFor="let movie of movies; trackBy: trackByMovieId" [movie]="movie"
+      (movieClick)="onMovieClick($event)">
+    </app-movie-card>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!isLoading && !errorMessage && movies.length === 0">
+    <div class="empty-icon">🎬</div>
+    <h3>Tidak Ada Film Ditemukan</h3>
+    <p>Coba kata kunci pencarian yang berbeda atau pilih kategori lain.</p>
+  </div>
+
+  <!-- Load More Button -->
+  <div class="load-more" *ngIf="canLoadMore && !isLoading && !errorMessage">
+    <button class="load-more-btn" (click)="loadMoreMovies()">
+      Muat Lebih Banyak Film
+    </button>
+  </div>
+</div>
