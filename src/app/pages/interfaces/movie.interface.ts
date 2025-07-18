@@ -1,34 +1,56 @@
 export interface Movie {
-  id: number;
-  title: string;
-  overview: string;
-  poster_path: string | null;
-  backdrop_path: string | null;
-  vote_average: number;
-  vote_count: number;
-  release_date: string;
-  genre_ids: number[];
-  adult: boolean;
-  original_language: string;
-  original_title: string;
-  popularity: number;
-  video: boolean;
+  imdbID: string;
+  Title: string;
+  Year: string;
+  Type: string;
+  Poster: string;
+  Plot?: string;
+  Genre?: string;
+  Director?: string;
+  Actors?: string;
+  imdbRating?: string;
+  imdbVotes?: string;
+  Runtime?: string;
+  Released?: string;
+  Writer?: string;
+  Language?: string;
+  Country?: string;
+  Awards?: string;
+  Metascore?: string;
+  BoxOffice?: string;
+  Production?: string;
+  Website?: string;
 }
 
-export interface MovieResponse {
-  page: number;
-  results: Movie[];
-  total_pages: number;
-  total_results: number;
+export interface MovieSearchResponse {
+  Search?: Movie[];
+  totalResults?: string;
+  Response: string;
+  Error?: string;
 }
 
-export interface Genre {
-  id: number;
-  name: string;
+export interface MovieDetailResponse extends Movie {
+  Response: string;
+  Error?: string;
 }
 
 export interface MovieCategory {
   id: string;
   name: string;
-  endpoint: string;
+  searchTerm: string;
+}
+
+// Helper interface untuk internal use
+export interface ProcessedMovie {
+  id: string;
+  title: string;
+  year: string;
+  poster: string;
+  plot: string;
+  rating: number;
+  genre: string;
+  director: string;
+  actors: string;
+  runtime: string;
+  type: string;
 }

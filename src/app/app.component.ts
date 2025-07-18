@@ -1,8 +1,7 @@
 import { Component, ViewChild } from '@angular/core';
-import { MovieListComponent } from './pages/movie-list/movie-list.component';
-
-import { RouterOutlet } from '@angular/router';
+import { CommonModule } from '@angular/common';
 import { HeaderComponent } from './pages/header/header.component';
+import { MovieListComponent } from './pages/movie-list/movie-list.component';
 
 @Component({
   selector: 'app-root',
@@ -12,7 +11,6 @@ import { HeaderComponent } from './pages/header/header.component';
   styleUrl: './app.component.scss'
 })
 export class AppComponent {
-  title = 'MovieTube';
   @ViewChild('movieList') movieList!: MovieListComponent;
 
   onSearch(query: string): void {

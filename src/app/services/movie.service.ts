@@ -1,187 +1,344 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
-import { Observable, throwError, of, from } from 'rxjs';
-import { catchError, map, timeout } from 'rxjs/operators';
-import { Movie, MovieResponse, Genre } from '../pages/interfaces/movie.interface';
+import { Observable, throwError, of, forkJoin } from 'rxjs';
+import { catchError, map, timeout, switchMap } from 'rxjs/operators';
+import { Movie, MovieSearchResponse, MovieDetailResponse, ProcessedMovie } from '../pages/interfaces/movie.interface';
+
 import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class MovieService {
-  private readonly API_KEY = environment.tmdbApiKey;
-  private readonly API_BASE_URL = environment.tmdbBaseUrl;
-  private readonly IMAGE_BASE_URL = environment.tmdbImageUrl;
+  private readonly API_KEY = environment.omdbApiKey;
+  private readonly API_BASE_URL = environment.omdbBaseUrl;
+  private readonly PLACEHOLDER_IMAGE = environment.placeholder;
 
-  // Backup sample data jika API gagal
-  private readonly sampleMovies: Movie[] = [
+  // Sample data untuk fallback
+  private readonly sampleMovies: ProcessedMovie[] = [
     {
-      id: 550,
-      title: "Fight Club",
-      overview: "A ticking-time-bomb insomniac and a slippery soap salesman channel primal male aggression into a shocking new form of therapy.",
-      poster_path: "/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
-      backdrop_path: "/fCayJrkfRaCRCTh8GqN30f8oyQF.jpg",
-      vote_average: 8.4,
-      vote_count: 26280,
-      release_date: "1999-10-15",
-      genre_ids: [18],
-      adult: false,
-      original_language: "en",
-      original_title: "Fight Club",
-      popularity: 61.416,
-      video: false
+      id: 'tt0137523',
+      title: 'Fight Club',
+      year: '1999',
+      poster: 'https://m.media-amazon.com/images/M/MV5BNDIzNDU0YzEtYzE5Ni00ZjlkLTk5ZjgtNjM3NWE4YzA3Nzk3XkEyXkFqcGdeQXVyMjUzOTY1NTc@._V1_SX300.jpg',
+      plot: 'An insomniac office worker and a devil-may-care soap maker form an underground fight club that evolves into an anarchist organization.',
+      rating: 8.8,
+      genre: 'Drama',
+      director: 'David Fincher',
+      actors: 'Brad Pitt, Edward Norton, Meat Loaf',
+      runtime: '139 min',
+      type: 'movie'
     },
     {
-      id: 13,
-      title: "Forrest Gump",
-      overview: "A man with a low IQ has accomplished great things in his life and been present during significant historic events.",
-      poster_path: "/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
-      backdrop_path: "/3h1JZGDhZ8nzxdgvkxha0qBqi1A.jpg",
-      vote_average: 8.5,
-      vote_count: 24930,
-      release_date: "1994-06-23",
-      genre_ids: [35, 18, 10749],
-      adult: false,
-      original_language: "en",
-      original_title: "Forrest Gump",
-      popularity: 58.153,
-      video: false
+      id: 'tt0109830',
+      title: 'Forrest Gump',
+      year: '1994',
+      poster: 'https://m.media-amazon.com/images/M/MV5BNWIwODRlZTUtY2U3ZS00Yzg1LWJhNzYtMmZiYmEyNmU1NjMzXkEyXkFqcGdeQXVyMTQxNzMzNDI@._V1_SX300.jpg',
+      plot: 'The presidencies of Kennedy and Johnson, the Vietnam War, the Watergate scandal and other historical events unfold from the perspective of an Alabama man.',
+      rating: 8.8,
+      genre: 'Drama, Romance',
+      director: 'Robert Zemeckis',
+      actors: 'Tom Hanks, Robin Wright, Gary Sinise',
+      runtime: '142 min',
+      type: 'movie'
     },
     {
-      id: 278,
-      title: "The Shawshank Redemption",
-      overview: "Framed in the 1940s for double murder, upstanding banker Andy Dufresne begins a new life at the Shawshank prison.",
-      poster_path: "/q6y0Go1TsGEsmtFryDOJo3dEmqu.jpg",
-      backdrop_path: "/iNh3BivHyg5sQRPP1KOkzguEX0H.jpg",
-      vote_average: 8.7,
-      vote_count: 23000,
-      release_date: "1994-09-23",
-      genre_ids: [18, 80],
-      adult: false,
-      original_language: "en",
-      original_title: "The Shawshank Redemption",
-      popularity: 89.931,
-      video: false
+      id: 'tt0111161',
+      title: 'The Shawshank Redemption',
+      year: '1994',
+      poster: 'https://m.media-amazon.com/images/M/MV5BNDE3ODcxYzMtY2YzZC00NmNlLWJiNDMtZDViZWM2MzIxZDYwXkEyXkFqcGdeQXVyNjAwNDUxODI@._V1_SX300.jpg',
+      plot: 'Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency.',
+      rating: 9.3,
+      genre: 'Drama',
+      director: 'Frank Darabont',
+      actors: 'Tim Robbins, Morgan Freeman, Bob Gunton',
+      runtime: '142 min',
+      type: 'movie'
+    },
+    {
+      id: 'tt0068646',
+      title: 'The Godfather',
+      year: '1972',
+      poster: 'https://m.media-amazon.com/images/M/MV5BM2MyNjYxNmUtYTAwNi00MTYxLWJmNWYtYzZlODY3ZTk3OTFlXkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_SX300.jpg',
+      plot: 'An organized crime dynasty\'s aging patriarch transfers control of his clandestine empire to his reluctant son.',
+      rating: 9.2,
+      genre: 'Crime, Drama',
+      director: 'Francis Ford Coppola',
+      actors: 'Marlon Brando, Al Pacino, James Caan',
+      runtime: '175 min',
+      type: 'movie'
+    },
+    {
+      id: 'tt0816692',
+      title: 'Interstellar',
+      year: '2014',
+      poster: 'https://m.media-amazon.com/images/M/MV5BZjdkOTU3MDktN2IxOS00OGEyLWFmMjktY2FiMmZkNWIyODZiXkEyXkFqcGdeQXVyMTMxODk2OTU@._V1_SX300.jpg',
+      plot: 'A team of explorers travel through a wormhole in space in an attempt to ensure humanity\'s survival.',
+      rating: 8.6,
+      genre: 'Adventure, Drama, Sci-Fi',
+      director: 'Christopher Nolan',
+      actors: 'Matthew McConaughey, Anne Hathaway, Jessica Chastain',
+      runtime: '169 min',
+      type: 'movie'
+    },
+    {
+      id: 'tt1375666',
+      title: 'Inception',
+      year: '2010',
+      poster: 'https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_SX300.jpg',
+      plot: 'A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into a CEO\'s mind.',
+      rating: 8.8,
+      genre: 'Action, Sci-Fi, Thriller',
+      director: 'Christopher Nolan',
+      actors: 'Leonardo DiCaprio, Marion Cotillard, Tom Hardy',
+      runtime: '148 min',
+      type: 'movie'
     }
   ];
 
   constructor(private http: HttpClient) { }
 
-  // Mendapatkan film berdasarkan kategori
-  getMoviesByCategory(category: string, page: number = 1): Observable<MovieResponse> {
-    const params = new HttpParams()
-      .set('api_key', this.API_KEY)
-      .set('language', 'id-ID')
-      .set('page', page.toString())
-      .set('region', 'ID');
-
-    return this.http.get<MovieResponse>(`${this.API_BASE_URL}/movie/${category}`, { params })
-      .pipe(
-        timeout(10000), // 10 second timeout
-        catchError(this.handleError.bind(this))
-      );
-  }
-
-  // Mencari film
-  searchMovies(query: string, page: number = 1): Observable<MovieResponse> {
+  // Search movies by query
+  searchMovies(query: string, page: number = 1): Observable<{ movies: ProcessedMovie[], totalResults: number }> {
     if (!query.trim()) {
-      return of({ page: 1, results: [], total_pages: 0, total_results: 0 });
+      return of({ movies: [], totalResults: 0 });
     }
 
     const params = new HttpParams()
-      .set('api_key', this.API_KEY)
-      .set('language', 'id-ID')
-      .set('query', query.trim())
-      .set('page', page.toString())
-      .set('include_adult', 'false');
+      .set('apikey', this.API_KEY)
+      .set('s', query.trim())
+      .set('type', 'movie')
+      .set('page', page.toString());
 
-    return this.http.get<MovieResponse>(`${this.API_BASE_URL}/search/movie`, { params })
+    return this.http.get<MovieSearchResponse>(`${this.API_BASE_URL}`, { params })
       .pipe(
         timeout(10000),
+        map(response => {
+          if (response.Response === 'True' && response.Search) {
+            const movies = response.Search.map(movie => this.transformMovie(movie));
+            return {
+              movies,
+              totalResults: parseInt(response.totalResults || '0')
+            };
+          } else {
+            return { movies: [], totalResults: 0 };
+          }
+        }),
         catchError(this.handleError.bind(this))
       );
   }
 
-  // Mendapatkan detail film
-  getMovieDetail(id: number): Observable<Movie> {
-    const params = new HttpParams()
-      .set('api_key', this.API_KEY)
-      .set('language', 'id-ID');
+  // Get movies by category (menggunakan search terms populer)
+  getMoviesByCategory(category: string): Observable<{ movies: ProcessedMovie[], totalResults: number }> {
+    const searchTerms = this.getCategorySearchTerms(category);
 
-    return this.http.get<Movie>(`${this.API_BASE_URL}/movie/${id}`, { params })
+    // Melakukan multiple search untuk kategori
+    const searches = searchTerms.map(term =>
+      this.searchMoviesByTerm(term).pipe(
+        catchError(() => of({ movies: [], totalResults: 0 }))
+      )
+    );
+
+    return forkJoin(searches).pipe(
+      map(results => {
+        // Gabungkan hasil dari multiple searches
+        const allMovies: ProcessedMovie[] = [];
+        let totalResults = 0;
+
+        results.forEach(result => {
+          allMovies.push(...result.movies);
+          totalResults += result.totalResults;
+        });
+
+        // Remove duplicates dan limit
+        const uniqueMovies = this.removeDuplicates(allMovies).slice(0, 20);
+
+        return {
+          movies: uniqueMovies,
+          totalResults: uniqueMovies.length
+        };
+      }),
+      catchError(this.handleError.bind(this))
+    );
+  }
+
+  // Get trending movies (simulasi dengan film populer)
+  getTrendingMovies(): Observable<{ movies: ProcessedMovie[], totalResults: number }> {
+    const trendingTerms = ['Marvel', 'Batman', 'Star Wars', 'Harry Potter'];
+
+    const searches = trendingTerms.map(term =>
+      this.searchMoviesByTerm(term).pipe(
+        catchError(() => of({ movies: [], totalResults: 0 }))
+      )
+    );
+
+    return forkJoin(searches).pipe(
+      map(results => {
+        const allMovies: ProcessedMovie[] = [];
+
+        results.forEach(result => {
+          allMovies.push(...result.movies.slice(0, 3)); // Ambil 3 teratas dari setiap kategori
+        });
+
+        const uniqueMovies = this.removeDuplicates(allMovies);
+
+        return {
+          movies: uniqueMovies,
+          totalResults: uniqueMovies.length
+        };
+      }),
+      catchError(this.handleError.bind(this))
+    );
+  }
+
+  // Get movie detail
+  getMovieDetail(imdbId: string): Observable<ProcessedMovie> {
+    const params = new HttpParams()
+      .set('apikey', this.API_KEY)
+      .set('i', imdbId)
+      .set('plot', 'full');
+
+    return this.http.get<MovieDetailResponse>(`${this.API_BASE_URL}`, { params })
       .pipe(
         timeout(10000),
+        map(response => {
+          if (response.Response === 'True') {
+            return this.transformMovieDetail(response);
+          } else {
+            throw new Error(response.Error || 'Movie not found');
+          }
+        }),
         catchError(this.handleError.bind(this))
       );
   }
 
-  // Mendapatkan genre list
-  getGenres(): Observable<Genre[]> {
+  // Helper: Search movies by specific term
+  private searchMoviesByTerm(term: string): Observable<{ movies: ProcessedMovie[], totalResults: number }> {
     const params = new HttpParams()
-      .set('api_key', this.API_KEY)
-      .set('language', 'id-ID');
+      .set('apikey', this.API_KEY)
+      .set('s', term)
+      .set('type', 'movie');
 
-    return this.http.get<{ genres: Genre[] }>(`${this.API_BASE_URL}/genre/movie/list`, { params })
+    return this.http.get<MovieSearchResponse>(`${this.API_BASE_URL}`, { params })
       .pipe(
-        map(response => response.genres),
-        catchError(() => of([]))
+        map(response => {
+          if (response.Response === 'True' && response.Search) {
+            const movies = response.Search
+              .filter(movie => parseInt(movie.Year) >= 2000) // Filter film modern
+              .map(movie => this.transformMovie(movie));
+            return {
+              movies,
+              totalResults: parseInt(response.totalResults || '0')
+            };
+          }
+          return { movies: [], totalResults: 0 };
+        })
       );
   }
 
-  // Mendapatkan film trending
-  getTrendingMovies(timeWindow: 'day' | 'week' = 'week'): Observable<MovieResponse> {
-    const params = new HttpParams()
-      .set('api_key', this.API_KEY)
-      .set('language', 'id-ID');
-
-    return this.http.get<MovieResponse>(`${this.API_BASE_URL}/trending/movie/${timeWindow}`, { params })
-      .pipe(
-        timeout(10000),
-        catchError(this.handleError.bind(this))
-      );
+  // Helper: Transform OMDB movie to internal format
+  private transformMovie(movie: Movie): ProcessedMovie {
+    return {
+      id: movie.imdbID,
+      title: movie.Title,
+      year: movie.Year,
+      poster: this.getImageUrl(movie.Poster),
+      plot: movie.Plot || 'Plot tidak tersedia.',
+      rating: parseFloat(movie.imdbRating || '0'),
+      genre: movie.Genre || 'Unknown',
+      director: movie.Director || 'Unknown',
+      actors: movie.Actors || 'Unknown',
+      runtime: movie.Runtime || 'N/A',
+      type: movie.Type
+    };
   }
 
-  // Helper untuk mendapatkan URL gambar
-  getImageUrl(path: string | null, size: string = 'w500'): string {
-    if (!path) {
-      return 'https://via.placeholder.com/500x750/333333/ffffff?text=No+Image';
+  // Helper: Transform OMDB movie detail to internal format
+  private transformMovieDetail(movie: MovieDetailResponse): ProcessedMovie {
+    return {
+      id: movie.imdbID,
+      title: movie.Title,
+      year: movie.Year,
+      poster: this.getImageUrl(movie.Poster),
+      plot: movie.Plot || 'Plot tidak tersedia.',
+      rating: parseFloat(movie.imdbRating || '0'),
+      genre: movie.Genre || 'Unknown',
+      director: movie.Director || 'Unknown',
+      actors: movie.Actors || 'Unknown',
+      runtime: movie.Runtime || 'N/A',
+      type: movie.Type
+    };
+  }
+
+  // Helper: Get search terms for categories
+  private getCategorySearchTerms(category: string): string[] {
+    const categoryTerms: { [key: string]: string[] } = {
+      'popular': ['Marvel', 'Batman', 'action', 'adventure'],
+      'top_rated': ['Godfather', 'Shawshank', 'Lord of the Rings', 'Inception'],
+      'upcoming': ['2024', '2023', 'recent'],
+      'now_playing': ['2024', '2023'],
+      'comedy': ['comedy', 'funny', 'laugh'],
+      'drama': ['drama', 'story', 'life'],
+      'thriller': ['thriller', 'suspense', 'mystery'],
+      'horror': ['horror', 'scary', 'fear']
+    };
+
+    return categoryTerms[category] || ['movie'];
+  }
+
+  // Helper: Remove duplicate movies
+  private removeDuplicates(movies: ProcessedMovie[]): ProcessedMovie[] {
+    const seen = new Set();
+    return movies.filter(movie => {
+      if (seen.has(movie.id)) {
+        return false;
+      }
+      seen.add(movie.id);
+      return true;
+    });
+  }
+
+  // Helper: Get image URL with fallback
+  getImageUrl(posterUrl: string | null): string {
+    if (!posterUrl || posterUrl === 'N/A' || posterUrl.includes('@@')) {
+      return this.PLACEHOLDER_IMAGE;
     }
-    return `${this.IMAGE_BASE_URL.replace('w500', size)}${path}`;
+    return posterUrl;
   }
 
-  // Mendapatkan tahun dari tanggal rilis
-  getReleaseYear(date: string): number {
-    if (!date) return 0;
-    return new Date(date).getFullYear();
-  }
-
-  // Format rating
+  // Helper: Format rating
   formatRating(rating: number): string {
+    if (rating === 0) return 'N/A';
     return rating.toFixed(1);
   }
 
-  // Check if API key is valid
-  checkApiConnection(): Observable<boolean> {
-    const params = new HttpParams().set('api_key', this.API_KEY);
+  // Helper: Get release year
+  getReleaseYear(year: string): string {
+    return year || 'Unknown';
+  }
 
-    return this.http.get(`${this.API_BASE_URL}/configuration`, { params })
+  // Check API connection
+  checkApiConnection(): Observable<boolean> {
+    const params = new HttpParams()
+      .set('apikey', this.API_KEY)
+      .set('i', 'tt0111161'); // Test dengan Shawshank Redemption
+
+    return this.http.get<MovieDetailResponse>(`${this.API_BASE_URL}`, { params })
       .pipe(
-        map(() => true),
+        map(response => response.Response === 'True'),
         catchError(() => of(false))
       );
   }
 
-  // Error handler dengan fallback ke sample data
-  private handleError(error: HttpErrorResponse): Observable<MovieResponse> {
-    console.error('API Error:', error);
+  // Error handler dengan fallback
+  private handleError(error: HttpErrorResponse): Observable<any> {
+    console.error('OMDB API Error:', error);
 
     let errorMessage = 'Terjadi kesalahan saat mengambil data film.';
 
     if (error.error instanceof ErrorEvent) {
-      // Client-side error
       errorMessage = `Error: ${error.error.message}`;
     } else {
-      // Server-side error
       switch (error.status) {
         case 401:
           errorMessage = 'API key tidak valid. Silakan periksa konfigurasi.';
@@ -190,7 +347,7 @@ export class MovieService {
           errorMessage = 'Data tidak ditemukan.';
           break;
         case 429:
-          errorMessage = 'Terlalu banyak permintaan. Silakan coba lagi nanti.';
+          errorMessage = 'Limit API tercapai. Silakan coba lagi nanti.';
           break;
         case 500:
           errorMessage = 'Server sedang bermasalah. Silakan coba lagi.';
@@ -200,15 +357,12 @@ export class MovieService {
       }
     }
 
-    // Fallback ke sample data
     console.log('Menggunakan sample data sebagai fallback...');
-    const fallbackResponse: MovieResponse = {
-      page: 1,
-      results: this.sampleMovies,
-      total_pages: 1,
-      total_results: this.sampleMovies.length
-    };
 
-    return of(fallbackResponse);
+    // Return fallback data
+    return of({
+      movies: this.sampleMovies,
+      totalResults: this.sampleMovies.length
+    });
   }
 }

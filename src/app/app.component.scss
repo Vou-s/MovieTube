@@ -1,15 +1,49 @@
- .app {
+  .app {
       min-height: 100vh;
-      background-color: #0f0f0f;
+      background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
       color: #ffffff;
+      display: flex;
+      flex-direction: column;
     }
 
     .main-content {
       margin-top: 80px;
+      flex: 1;
+    }
+
+    .footer {
+      background-color: #212121;
+      border-top: 1px solid #333;
+      margin-top: 40px;
+    }
+
+    .footer-content {
+      text-align: center;
+      padding: 20px;
+      color: #888;
+    }
+
+    .footer-content p {
+      margin: 4px 0;
+    }
+
+    .footer-content a {
+      color: #ff6b6b;
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+
+    .footer-content a:hover {
+      color: #ff5252;
     }
 
     @media (max-width: 480px) {
       .main-content {
         margin-top: 120px;
+      }
+
+      .footer-content {
+        padding: 15px;
+        font-size: 14px;
       }
     }

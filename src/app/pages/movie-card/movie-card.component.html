@@ -1,24 +1,35 @@
 <div class="movie-card" (click)="onMovieClick()">
-      <div class="poster-container">
-        <img
-          [src]="movieService.getImageUrl(movie.poster_path)"
-          [alt]="movie.title"
-          class="movie-poster"
-          (error)="onImageError($event)">
-        <div class="poster-overlay" *ngIf="!posterLoaded">
-          🎬 {{ movie.title }}
-        </div>
-      </div>
-
-      <div class="movie-info">
-        <h3 class="movie-title">{{ movie.title }}</h3>
-        <div class="movie-meta">
-          <span class="release-year">{{ movieService.getReleaseYear(movie.release_date) }}</span>
-          <div class="rating">
-            <span class="star">⭐</span>
-            <span class="rating-value">{{ movie.vote_average | number:'1.1-1' }}</span>
-          </div>
-        </div>
-        <p class="movie-overview">{{ movie.overview }}</p>
+  <div class="poster-container">
+    <img [src]="movie.poster!== 'N/A' ? movie.poster : 'https://placehold.co/300x450?text=No+Poster'" (error)="onImgError($event)" alt="{{ movie.title }}" class="movie-poster"
+      [class.loaded]="posterLoaded" (load)="onImageLoad()" (error)="onImageError($event)">
+    <div class="poster-overlay" *ngIf="!posterLoaded">
+      <div class="poster-placeholder">
+        🎬 {{ movie.title }}
       </div>
     </div>
+    <div class="rating-badge" *ngIf="movie.rating > 0">
+      <span class="star">⭐</span>
+      <span class="rating-value">{{ movieService.formatRating(movie.rating) }}</span>
+    </div>
+    <div class="type-badge">
+      {{ movie.type.toUpperCase() }}
+    </div>
+  </div>
+
+  <div class="movie-info">
+    <h3 class="movie-title">{{ movie.title }}</h3>
+    <div class="movie-meta">
+      <span class="release-year">{{ movie.year }}</span>
+      <div class="runtime" *ngIf="movie.runtime !== 'N/A'">
+        ⏱️ {{ movie.runtime }}
+      </div>
+    </div>
+    <div class="genre" *ngIf="movie.genre !== 'Unknown'">
+      🎭 {{ movie.genre }}
+    </div>
+    <p class="movie-plot">{{ movie.plot }}</p>
+    <div class="movie-credits" *ngIf="movie.director !== 'Unknown'">
+      <small class="director">🎬 {{ movie.director }}</small>
+    </div>
+  </div>
+</div>

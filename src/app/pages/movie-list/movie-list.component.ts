@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { MovieService } from '../../services/movie.service';
-import { Movie, MovieCategory } from '../interfaces/movie.interface';
 import { CommonModule } from '@angular/common';
+import { MovieService } from '../../services/movie.service';
+import { ProcessedMovie, MovieCategory } from '../interfaces/movie.interface';
 import { MovieCardComponent } from '../movie-card/movie-card.component';
 
 @Component({
@@ -11,23 +11,24 @@ import { MovieCardComponent } from '../movie-card/movie-card.component';
   styleUrl: './movie-list.component.scss'
 })
 export class MovieListComponent implements OnInit {
-  movies: Movie[] = [];
+  movies: ProcessedMovie[] = [];
   isLoading = false;
   errorMessage = '';
   loadingMessage = 'Memuat film...';
   sectionTitle = 'Film Populer';
   activeCategory = 'popular';
-  currentPage = 1;
-  canLoadMore = false;
+  totalResults = 0;
   lastSearchQuery = '';
   showApiStatus = true;
-  apiStatus = { message: 'Menghubungkan ke API...', class: 'offline' };
+  apiStatus = { message: 'Menghubungkan ke OMDB API...', class: 'offline' };
 
   categories: MovieCategory[] = [
-    { id: 'popular', name: 'Populer', endpoint: 'popular' },
-    { id: 'top_rated', name: 'Rating Tinggi', endpoint: 'top_rated' },
-    { id: 'upcoming', name: 'Akan Datang', endpoint: 'upcoming' },
-    { id: 'now_playing', name: 'Sedang Tayang', endpoint: 'now_playing' }
+    { id: 'popular', name: 'Populer', searchTerm: 'popular' },
+    { id: 'top_rated', name: 'Rating Tinggi', searchTerm: 'top_rated' },
+    { id: 'action', name: 'Action', searchTerm: 'action' },
+    { id: 'comedy', name: 'Comedy', searchTerm: 'comedy' },
+    { id: 'drama', name: 'Drama', searchTerm: 'drama' },
+    { id: 'thriller', name: 'Thriller', searchTerm: 'thriller' }
   ];
 
   constructor(private movieService: MovieService) {}
@@ -41,7 +42,7 @@ export class MovieListComponent implements OnInit {
     this.movieService.checkApiConnection().subscribe({
       next: (isConnected) => {
         if (isConnected) {
-          this.apiStatus = { message: '🟢 Terhubung ke TMDb API', class: 'online' };
+          this.apiStatus = { message: '🟢 Terhubung ke OMDB API', class: 'online' };
         } else {
           this.apiStatus = { message: '🟡 Mode Offline - Menggunakan Data Sample', class: 'offline' };
         }
@@ -60,17 +61,13 @@ export class MovieListComponent implements OnInit {
     this.errorMessage = '';
     this.activeCategory = categoryId;
     this.sectionTitle = title;
-    this.currentPage = 1;
     this.lastSearchQuery = '';
     this.loadingMessage = 'Memuat film terbaru...';
 
-    const category = this.categories.find(c => c.id === categoryId);
-    const endpoint = category?.endpoint || 'popular';
-
-    this.movieService.getMoviesByCategory(endpoint, this.currentPage).subscribe({
+    this.movieService.getMoviesByCategory(categoryId).subscribe({
       next: (response) => {
-        this.movies = response.results;
-        this.canLoadMore = response.page < response.total_pages;
+        this.movies = response.movies;
+        this.totalResults = response.totalResults;
         this.isLoading = false;
       },
       error: (error) => {
@@ -84,15 +81,14 @@ export class MovieListComponent implements OnInit {
     this.isLoading = true;
     this.errorMessage = '';
     this.activeCategory = 'trending';
-    this.sectionTitle = '🔥 Film Trending Minggu Ini';
-    this.currentPage = 1;
+    this.sectionTitle = '🔥 Film Trending';
     this.lastSearchQuery = '';
     this.loadingMessage = 'Memuat film trending...';
 
-    this.movieService.getTrendingMovies('week').subscribe({
+    this.movieService.getTrendingMovies().subscribe({
       next: (response) => {
-        this.movies = response.results;
-        this.canLoadMore = response.page < response.total_pages;
+        this.movies = response.movies;
+        this.totalResults = response.totalResults;
         this.isLoading = false;
       },
       error: (error) => {
@@ -109,17 +105,16 @@ export class MovieListComponent implements OnInit {
     this.errorMessage = '';
     this.sectionTitle = `🔍 Hasil Pencarian: "${query}"`;
     this.activeCategory = '';
-    this.currentPage = 1;
     this.lastSearchQuery = query;
     this.loadingMessage = 'Mencari film...';
 
-    this.movieService.searchMovies(query, this.currentPage).subscribe({
+    this.movieService.searchMovies(query).subscribe({
       next: (response) => {
-        this.movies = response.results;
-        this.canLoadMore = response.page < response.total_pages;
+        this.movies = response.movies;
+        this.totalResults = response.totalResults;
         this.isLoading = false;
 
-        if (response.results.length === 0) {
+        if (response.movies.length === 0) {
           this.sectionTitle = `Tidak ada hasil untuk "${query}"`;
         }
       },
@@ -130,60 +125,29 @@ export class MovieListComponent implements OnInit {
     });
   }
 
-  loadMoreMovies(): void {
-    if (!this.canLoadMore || this.isLoading) return;
-
-    this.isLoading = true;
-    this.currentPage++;
-    this.loadingMessage = 'Memuat film lainnya...';
-
-    let observable;
-
-    if (this.lastSearchQuery) {
-      observable = this.movieService.searchMovies(this.lastSearchQuery, this.currentPage);
-    } else if (this.activeCategory === 'trending') {
-      observable = this.movieService.getTrendingMovies('week');
-    } else {
-      const category = this.categories.find(c => c.id === this.activeCategory);
-      const endpoint = category?.endpoint || 'popular';
-      observable = this.movieService.getMoviesByCategory(endpoint, this.currentPage);
-    }
-
-    observable.subscribe({
-      next: (response) => {
-        this.movies = [...this.movies, ...response.results];
-        this.canLoadMore = response.page < response.total_pages;
-        this.isLoading = false;
-      },
-      error: (error) => {
-        console.error('Error loading more movies:', error);
-        this.currentPage--; // Reset page number
-        this.handleError('Gagal memuat film tambahan');
-      }
-    });
-  }
-
   loadFallbackData(): void {
-    // Reset ke data sample
     this.loadMovies('popular', 'Film Populer (Mode Offline)');
   }
 
-  onMovieClick(movie: Movie): void {
+  onMovieClick(movie: ProcessedMovie): void {
     // Format informasi film untuk ditampilkan
-    const releaseYear = this.movieService.getReleaseYear(movie.release_date);
-    const rating = this.movieService.formatRating(movie.vote_average);
-
     const movieInfo = `
-🎬 ${movie.title} (${releaseYear})
+🎬 ${movie.title} (${movie.year})
 
-⭐ Rating: ${rating}/10 (${movie.vote_count.toLocaleString()} votes)
+⭐ Rating IMDB: ${movie.rating > 0 ? movie.rating + '/10' : 'Belum ada rating'}
 
-📅 Tanggal Rilis: ${new Date(movie.release_date).toLocaleDateString('id-ID')}
+🎭 Genre: ${movie.genre}
+
+⏱️ Durasi: ${movie.runtime}
+
+🎬 Sutradara: ${movie.director}
+
+🎭 Pemeran: ${movie.actors}
 
 📖 Sinopsis:
-${movie.overview || 'Tidak ada sinopsis tersedia.'}
+${movie.plot}
 
-🌐 Bahasa: ${movie.original_language.toUpperCase()}
+🆔 IMDB ID: ${movie.id}
     `.trim();
 
     alert(movieInfo);
@@ -209,7 +173,7 @@ ${movie.overview || 'Tidak ada sinopsis tersedia.'}
     this.isLoading = false;
   }
 
-  trackByMovieId(index: number, movie: Movie): number {
+  trackByMovieId(index: number, movie: ProcessedMovie): string {
     return movie.id;
   }
 }
